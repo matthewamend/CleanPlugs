@@ -33,6 +33,13 @@ impl Default for CleanComp {
 struct CleanCompParams {
     #[persist = "editor-state"]
     editor_state: Arc<ViziaState>,
+
+    /// The input gain of the signal
+    #[id = "input_gain"]
+    pub input_gain: FloatParam,
+
+    #[id = "output_gain"]
+    pub output_gain: FloatParam,
     /// The dB threshold for when the compressor sets in
     #[id = "threshold"]
     pub threshold: FloatParam,
@@ -68,6 +75,34 @@ impl Default for CleanCompParams {
     fn default() -> Self {
         Self {
             editor_state: editor::default_state(),
+
+            input_gain: FloatParam::new(
+                "Input Gain",
+                util::db_to_gain(0.0),
+                FloatRange::Skewed {
+                    min: util::MINUS_INFINITY_DB,
+                    max: util::db_to_gain(10.0),
+                    factor: FloatRange::gain_skew_factor(util::MINUS_INFINITY_DB, 0.0),
+                },
+            )
+            .with_smoother(SmoothingStyle::Logarithmic(20.0))
+            .with_unit(" dB")
+            .with_value_to_string(formatters::v2s_f32_gain_to_db(2))
+            .with_string_to_value(formatters::s2v_f32_gain_to_db()),
+
+            output_gain: FloatParam::new(
+                "Output Gain",
+                util::db_to_gain(0.0),
+                FloatRange::Skewed {
+                    min: util::MINUS_INFINITY_DB,
+                    max: util::db_to_gain(10.0),
+                    factor: FloatRange::gain_skew_factor(util::MINUS_INFINITY_DB, 0.0),
+                },
+            )
+            .with_smoother(SmoothingStyle::Logarithmic(20.0))
+            .with_unit(" dB")
+            .with_value_to_string(formatters::v2s_f32_gain_to_db(2))
+            .with_string_to_value(formatters::s2v_f32_gain_to_db()),
 
             threshold: FloatParam::new(
                 "Threshold",
@@ -224,6 +259,9 @@ impl Plugin for CleanComp {
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
         for channel_samples in buffer.iter_samples() {
+            let input_gain = self.params.input_gain.smoothed.next();
+            let output_gain = self.params.output_gain.smoothed.next();
+
             let threshold = self.params.threshold.smoothed.next();
             let ratio = self.params.ratio.value();
             let comp_or_limit = self.params.comp_or_limit.value();
@@ -241,6 +279,8 @@ impl Plugin for CleanComp {
             for sample in channel_samples {
                 nih_log!("sample: {}", *sample);
 
+                *sample = *sample * input_gain;
+
                 if *sample > threshold {
                     attack_countdown -= 1;
                 } else {
@@ -254,21 +294,23 @@ impl Plugin for CleanComp {
                 } else if release_countdown > 0 {
                     release_countdown -= 1;
                 }
-            }
 
-            if self.params.editor_state.is_open() {
-                amplitude = (amplitude / num_samples as f32).abs();
-                let current_peak_meter = self.peak_meter.load(std::sync::atomic::Ordering::Relaxed);
+                *sample = *sample * output_gain;
+                if self.params.editor_state.is_open() {
+                    amplitude = (amplitude / num_samples as f32).abs();
+                    let current_peak_meter =
+                        self.peak_meter.load(std::sync::atomic::Ordering::Relaxed);
 
-                let new_peak_meter = if amplitude > current_peak_meter {
-                    amplitude
-                } else {
-                    current_peak_meter * self.peak_meter_decay_weight
-                        + amplitude * (1.0 - self.peak_meter_decay_weight)
-                };
+                    let new_peak_meter = if amplitude > current_peak_meter {
+                        amplitude
+                    } else {
+                        current_peak_meter * self.peak_meter_decay_weight
+                            + amplitude * (1.0 - self.peak_meter_decay_weight)
+                    };
 
-                self.peak_meter
-                    .store(new_peak_meter, std::sync::atomic::Ordering::Relaxed)
+                    self.peak_meter
+                        .store(new_peak_meter, std::sync::atomic::Ordering::Relaxed)
+                }
             }
         }
 

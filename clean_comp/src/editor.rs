@@ -30,9 +30,6 @@ pub(crate) fn create(
         cx.add_stylesheet(include_style!("src/style.css"))
             .expect("Failed to load stylesheet");
 
-        assets::register_noto_sans_light(cx);
-        assets::register_noto_sans_thin(cx);
-
         Data {
             params: params.clone(),
             peak_meter: peak_meter.clone(),
@@ -40,37 +37,21 @@ pub(crate) fn create(
         .build(cx);
 
         VStack::new(cx, |cx| {
-            title_column(cx);
+            title(cx);
 
-            ParamButton::new(cx, Data::params, |params| &params.comp_or_limit).class("stack");
-
-            ParamSlider::new(cx, Data::params, |params| &params.threshold);
-
-            ParamSlider::new(cx, Data::params, |params| &params.ratio);
-
-            ParamSlider::new(cx, Data::params, |params| &params.attack);
-
-            ParamSlider::new(cx, Data::params, |params| &params.release);
-
-            PeakMeter::new(
-                cx,
-                Data::peak_meter
-                    .map(|peak_meter| util::gain_to_db(peak_meter.load(Ordering::Relaxed))),
-                Some(Duration::from_millis(600)),
-            )
-            .top(Pixels(10.0));
-        })
-        .class("bg")
-        .row_between(Pixels(0.0))
-        .child_left(Stretch(1.0))
-        .child_right(Stretch(1.0));
+            body(cx);
+        });
     })
 }
 
-fn title_column(cx: &mut Context) {
+fn title(cx: &mut Context) {
     HStack::new(cx, |cx| {
         Label::new(cx, "CleanComp").class("title");
 
         Label::new(cx, env!("CARGO_PKG_VERSION")).class("version");
     });
+}
+
+fn body(cx: &mut Context) {
+    HStack::new(cx, |cx| {});
 }
