@@ -1,0 +1,19 @@
+
+.bg {
+	background-color: white;
+}
+
+.title {
+	color: blue;
+	font-weight: bold;
+	font-family: "Gill Sans", sans-serif;
+	font-size: 100px;
+	padding-bottom: 30px;
+}
+
+.version {
+	color: darker-gray;
+	font-size: 20px;
+	font-family: "Gill Sans", sans-serif;
+	padding-bottom: 30px;
+}

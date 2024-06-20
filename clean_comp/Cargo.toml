@@ -1,0 +1,27 @@
+[package]
+name = "clean_comp"
+version = "0.1.0"
+edition = "2021"
+authors = ["Matt Amend <matt.a.amend@gmail.com"]
+
+description = "A simple compressor with simple options"
+
+[workspace]
+members = ["xtask"]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+atomic_float = "1.0.0"
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug", features = ["standalone"] }
+nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git" }
+
+[profile.release]
+lto = "thin"
+strip = "symbols"
+
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = "none"

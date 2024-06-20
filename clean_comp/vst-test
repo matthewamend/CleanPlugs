@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cargo xtask bundle clean_comp --release
+
+open -n /Applications/'vPlayer 4 Lite.app' --args target/bundled/clean_comp.vst3
